@@ -1,0 +1,421 @@
+---
+title: "01-cleaning"
+format: html
+---
+
+# Introduction
+
+In this file I will clean an hourly weather dataset with stations around MLS stadiums from 2010-2024 and leave it in a position to do analysis upon. I will import the MLS schedule from 2025 and a dataset with information about the MLS stadiums, specifically the nearest weather station, to filter out unwanted dates from our weather dataset. I will export csv files relating to weather under the current Spring-Fall MLS schedule and the future Summer-Spring dataset, across time.
+
+# Libraries
+
+```{r}
+# Importing libraries
+library(tidyverse)
+library(ISOweek)
+```
+
+# Weekly Schedule across time
+
+## Import the MLS schedule, and the stadium/station information.
+
+```{r}
+#Importing schedule
+
+mls_schedule <- read_csv("data-raw/MLS STADIUMS AND SCHEDULES - Schedule.csv")
+
+mls_stadium <- read.csv("data-raw/MLS STADIUMS AND SCHEDULES - Stadiums.csv")
+
+```
+
+## Changing the names of the stations to match their source.
+
+```{r}
+mls_stadium <- mls_stadium |> mutate(station = final_station_name)
+```
+
+## Convert the date format in to R Date.
+
+```{r}
+# Making the date format fit in R  
+mls_schedule <- mls_schedule |> mutate(Date = mdy(Date))
+```
+
+## Create a "new schedule" by simply adding six months to the old dates.
+
+```{r}
+#Creating a New Schedule
+schedule_data <- mls_schedule |> mutate(new_schedule_6months = Date %m+% months(-6), old_schedule_2024 = Date %m+% months(-12), old_schedule_2023 = Date %m+% months(-24))
+```
+
+## Importing weather data and schedule data.
+
+```{r}
+whole_weather_data <-  read_csv("data-raw/final_data.csv")
+```
+
+## Filtering for early kickoffs
+
+```{r}
+early_kickoff_data <- whole_weather_data |> mutate(time = hour(datetime)) |> filter(15<=time & time<=18)
+```
+
+## Filtering for late kickoffs
+
+```{r}
+late_kickoff_data <- whole_weather_data |> mutate(time = hour(datetime)) |> filter(19<=time & time<=21)
+```
+
+## Writing a function to convert from hourly to daily summaries.
+
+```{r}
+# Converts empty precipitation values to 0, removes an empty observation
+hourly_to_daily <- function(dataframe){
+  #Cleaning the date, creating a day column, and converting NA to 0.
+  no_na_dataframe <- dataframe |> mutate(date = as.Date(datetime), precipitation = if_else(is.na(dataframe$precip), 0, dataframe$precip),snow = if_else(is.na(dataframe$snow), 0, dataframe$snow))
+  #Finding the high temp, low temp and precipitation for each day.
+  dataframe_clean <- no_na_dataframe |>  
+  group_by(date) |> 
+  summarise(high_temp = max(temp, na.rm = TRUE),
+            low_temp = min(temp, na.rm = TRUE),
+            feels_like_high_temp = max(feelslike, na.rm = TRUE),
+            feels_like_low_temp = min(feelslike, na.rm = TRUE),
+            precipitation = sum(precipitation),
+            snow = sum(snow))
+  
+  dataframe_clean_station <- dataframe_clean|> mutate(station = dataframe$STATION[1]) |> mutate(station = as.character(station))
+  
+  return(dataframe_clean_station)
+}
+```
+
+We Will later use this function to find the summaries of the weather, as opposed to the hourly data.
+
+## Saving the summarized versions of the weather data
+
+```{r}
+# Early kickoff
+hourly_to_daily(early_kickoff_data)
+# Late kickoff
+hourly_to_daily(late_kickoff_data)
+# All data
+hourly_to_daily(whole_weather_data)
+```
+
+
+## Writing a function to find the date associated with a day of the week and a number week
+
+```{r}
+get_weekdays_in_week <- function(year, week, weekdays) {
+  # Find the Monday of the requested ISO week
+  monday <- ISOweek::ISOweek2date(sprintf("%d-W%02d-1", year, week))
+  
+  weekday_positions <- c(
+    "Monday" = 0,
+    "Tuesday" = 1,
+    "Wednesday" = 2,
+    "Thursday" = 3,
+    "Friday" = 4,
+    "Saturday" = 5,
+    "Sunday" = 6
+  )
+  
+  result_dates <- monday + days(weekday_positions[weekdays])
+  names(result_dates) <- weekdays
+  
+  return(result_dates)
+}
+```
+
+
+## Saving years for the schedules
+
+```{r}
+years <- seq(2010,2024)
+```
+
+
+## Function to find dates, grouped by weeks, for the Spring-Fall schedule
+
+```{r}
+spring_fall_date_function <- function(years) {
+  
+  empty_date <- as.Date(character())
+  spring_fall_weeks <- 8:42
+  
+  for (i in seq_along(years)) {
+    yr <- years[i]
+    
+    for (j in seq_along(spring_fall_weeks)) {
+      wk <- spring_fall_weeks[j]
+      
+      empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+      empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+      empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+    }
+  }
+  
+  return(empty_date)
+}
+```
+
+
+## Function to find the # of ISOweeks in a given year
+
+```{r}
+get_iso_weeks <- function(year) {
+  date_dec28 <- as.Date(sprintf("%d-12-28", year))
+  
+  return(isoweek(date_dec28))
+}
+```
+
+We will later use this to make sure if there are 53 weeks in a year, we save 53 weeks in the Summer-Spring schedule.
+
+## Dates for Summer-Spring schedule function
+
+```{r}
+summer_winter_date_function <- function(years) {
+  
+  empty_date <- as.Date(character())
+  summer_winter_weeks_base <- 29:63
+  
+  summer_winter_weeks_short_year <- summer_winter_weeks_base[1:24] 
+  summer_winter_weeks_short_year[25:35] <-  summer_winter_weeks_base[25:35] - 52
+  
+  summer_winter_weeks_long_year <- summer_winter_weeks_base[1:25] 
+  summer_winter_weeks_long_year[26:35] <-  summer_winter_weeks_base[26:35] - 53
+  
+  for (i in seq_along(years)) {
+    yr <- years[i]
+    
+    if (get_iso_weeks(yr) == 52){
+       
+      for (j in seq_along(summer_winter_weeks_short_year)){
+        wk <- spring_fall_weeks[j]
+        
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+      }
+      }
+    
+    if (get_iso_weeks(yr)==53){
+       
+      for (j in seq_along(summer_winter_weeks_long_year)){
+        wk <- spring_fall_weeks[j]
+        
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+      }
+      }
+  }
+  
+  return(empty_date)
+}
+```
+
+## Finding and saving the Spring-Fall dates
+
+```{r}
+spring_fall_dates <-  spring_fall_date_function(years)
+```
+
+## Finding and saving the Summer-Winter dates
+
+```{r}
+summer_winter_dates <-  summer_winter_date_function(years)
+```
+
+## Filtering and saving the weather data to our necessary dates
+
+```{r}
+# Early Kickoff Spring Schedule
+weekly_schedule_early_spring <- early_kickoff_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% spring_fall_dates)
+
+# Late Kickoff Spring Schedule
+weekly_schedule_late_spring <- late_kickoff_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% spring_fall_dates)
+
+# Early Kickoff Spring Schedule
+weekly_schedule_early_summer <- early_kickoff_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% summer_winter_dates)
+
+# Late Kickoff Spring Schedule
+weekly_schedule_late_summer <- late_kickoff_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% summer_winter_dates)
+```
+
+# Comparing the current Spring-Fall 2025 schedule to what it would've looked like as a Summer-Spring schedule
+
+## Writing a function to find what the interation of the day of the week associated with the date (used chatgpt). 
+
+```{r}
+get_weekday_info <- function(dates) {
+
+  result <- lapply(dates, function(date) {
+    year <- year(date)
+    month <- month(date)
+    weekday_name <- weekdays(date)
+    
+    all_days <- seq(from = as.Date(paste(year, month, "01", sep = "-")),
+                    to = as.Date(paste(year, month, days_in_month(date), sep = "-")),
+                    by = "day")
+    
+    matching_weekdays <- all_days[weekdays(all_days) == weekday_name]
+    
+    occurrence_number <- which(matching_weekdays == date)
+    
+    list(
+      weekday_name = weekday_name,
+      weekday_number_in_month = occurrence_number
+    )
+  })
+  do.call(rbind, lapply(result, as.data.frame))
+}
+```
+
+## Writing a function to find the date associated with the occurence of a day of the week within a month (used chatGPT).
+
+```{r}
+get_nth_weekdays <- function(years, months, weekdays_vec, occurrences) {
+  # Ensure vectors are the same length
+  n <- length(months)
+  stopifnot(length(weekdays_vec) == n,
+            length(occurrences) == n)
+
+  result_dates <- vector("list", n)
+
+  for (i in seq_len(n)) {
+    year <- years[1]
+    month <- months[i]
+    weekday_name <- weekdays_vec[i]
+    n_occurrence <- occurrences[i]
+    
+    first_day <- as.Date(paste(year, month, "01", sep = "-"))
+    last_day <- as.Date(paste(year, month, days_in_month(first_day), sep = "-"))
+    all_days <- seq.Date(first_day, last_day, by = "day")
+    
+
+    matching_days <- all_days[weekdays(all_days) == weekday_name]
+    
+    result_dates[[i]] <- if (length(matching_days) >= n_occurrence) {
+      matching_days[n_occurrence]
+    } else {
+      NA
+    }
+  }
+  as.Date(unlist(result_dates))
+}
+
+```
+
+The previous two functions, which find which days of the week in a month a match was played on, will find the specific dates that the Summer-Spring schedule might've been played on.
+
+## Creating a dataframe with years to be able to mutate new schedules 
+
+```{r}
+years <- c(2024)
+dates_vector <- make_date(years, 1, 1)
+years_df <- data.frame(dates_vector)
+```
+
+
+## Create a new frame to be able to create the ideal new schedule.
+
+```{r}
+# Pulling out the important date information from the original schedule, finding which dates cannot be translated.
+test_schedule <-  schedule_data |> mutate( get_weekday_info(Date),new_schedule = get_nth_weekdays(year(new_schedule_6months),month(new_schedule_6months),weekday_name,weekday_number_in_month))
+
+```
+
+## Creating a function to create new columns with new dates.
+
+```{r}
+new_column_schedules <- function(df, years_df){
+  for (i in seq_len(nrow(years_df))){
+    year_in_row <- year(years_df[i,])
+    df <- df |> mutate("new_schedule_{year_in_row}" := get_nth_weekdays(year(years_df[i,]),month(df$new_schedule_6months),df$weekday_name,df$weekday_number_in_month))
+  }
+return(df)
+}
+```
+
+## Saving the new schedules
+
+```{r}
+mls_schedule_new_dates <- new_column_schedules(test_schedule,years_df)
+```
+
+## Writing a function to move exact match schedule back however many years
+
+```{r}
+new_column_schedules_cleaner <- function(df, years_df){
+  for (i in seq_len(nrow(years_df))){
+    year_in_row <- year(years_df[i,])
+  df <- df |>
+    mutate(
+  
+  "new_schedule_fallback_{year_in_row}" := get_nth_weekdays(year(years_df[i,]), month(df$new_schedule_6months), df$weekday_name, pmax(df$weekday_number_in_month - 1, 1)) + 4, 
+  
+  "new_schedule_{year_in_row}_clean" := if_else(is.na(glue_data(df$"new_schedule_{year_in_row}")),glue_data(df$"new_fallback_date_{year_in_row}"),as.Date(glue_data(df$"new_schedule_{year_in_row}"))),
+                                               ,
+  "old_schedule_fallback_{year_in_row}" := get_nth_weekdays(year(years_df[i,]), month(df$new_schedule_6months), df$weekday_name, pmax(df$weekday_number_in_month - 1, 1)) + 4, 
+  
+  "old_schedule_{year_in_row}_clean" := if_else(is.na(glue_data(df$"old_schedule_{year_in_row}")),glue_data(df$"old_fallback_date_{year_in_row}"),as.Date(glue_data(df$"old_schedule_{year_in_row}"))))
+  }
+  return(df)
+  }
+
+```
+
+## Saving the Summer-Spring schedule
+
+```{r}
+mls_schedule_new_dates_clean <- new_column_schedules_cleaner(mls_schedule_new_dates,years_df)
+```
+
+## Cleaning the dates, in case there wasn't an interation of that day of the week in the year
+
+```{r}
+# Removing the NAs and replacing them with a corresponding date.
+new_mls_schedule_clean <-  mls_schedule_new_dates |> mutate(
+  
+  fallback_date_6months = get_nth_weekdays(year(new_schedule_6months), month(new_schedule_6months), weekday_name, pmax(weekday_number_in_month - 1, 1)) + 4, 
+  
+  new_schedule_6months_clean = if_else(is.na(new_schedule),fallback_date_6months,as.Date(new_schedule))) |> select(Date,Home,Away,new_schedule_6months,new_schedule_6months_clean)
+```
+
+
+## Review for NA values
+
+```{r}
+new_mls_schedule_clean  |> 
+  summarise_all(~ sum(is.na(.)))
+```
+
+## Saving the new and old schedule to the environment
+```{r}
+summer_spring_2025_schedule <- new_mls_schedule_clean$new_schedule_6months_clean
+
+spring_fall_2025_schedule <- new_mls_schedule_clean$Date
+```
+
+## Filterng the weather data
+
+```{r}
+# 2025 Spring Schedule
+exact_2025_weather_spring_sched <- weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% spring_fall_2025_schedule)
+
+# 2024-25 Summer Schedule
+exact_2025_weather_summer_sched <- weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% summer_spring_2025_schedule)
+```
+
+# Exporting Data
+
+```{r}
+write_csv(weekly_schedule_late_summer,"data-processed/weekly_schedule_late_summer.csv")
+write_csv(weekly_schedule_early_summer,"data-processed/weekly_schedule_early_summer.csv")
+write_csv(weekly_schedule_late_spring,"data-processed/weekly_schedule_late_spring.csv")
+write_csv(weekly_schedule_early_spring,"data-processed/weekly_schedule_early_spring.csv")
+write_csv(exact_2025_weather_summer_sched,"data-processed/exact_2025_weather_summer_sched.csv")
+write_csv(exact_2025_weather_spring_sched,"data-processed/exact_2025_weather_spring_sched.csv")
+```

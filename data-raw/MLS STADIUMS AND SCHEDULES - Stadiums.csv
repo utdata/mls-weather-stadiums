@@ -1,0 +1,31 @@
+Team,Stadium,Domed,City,State/Province,Country,Nearest National Weather Station Callsign,National Station Distance (Miles),Nearest Visual Crossing Station ID,Visual Crossing Station Distance (Miles),DOWNLOADED,final_station_name
+Minnesota United FC,Allianz Field,NO,St. Paul,MN,,KEC65,5.24,D0937,1,YES,D0937
+Real Salt Lake,America First Stadium,NO,Sandy,UT,,KEC78,0.93,E9651,3,YES,E9651
+D.C. United,Audi Field,NO,Washington D.C.,Washington DC,,WNG736,5.56,KDCA,2,YES,KDCA
+Charlotte FC,Bank of America Stadium,NO,Charlotte,NC,,WXL70,8.73,KCLT,6,YES,KCLT
+Vancouver Whitecaps,BC Place,YES,Vancouver,BC,Canada,KAD93,37.23,71201099999,1,YES,71201099999
+Toronto FC,BMO Field,NO,Toronto,ON,Canada,FW1856,1,71265099999,2,YES,71265099999
+Los Angeles FC,BMO Stadium,NO,Los Angeles,CA,,KWO37,18.76,72295603167,7,YES,72295603167
+Inter Miami FC,Chase Stadium,NO,Fort Lauderdale,FL,,KHB34,18.72,72203912885,1,YES,72203912885
+Sporting Kansas City,Children's Mercy Stadium,NO,Kansas City,KS,,KID77,26.5,KMKC,12,YES,KMKC
+Colorado Rapids,Dick's Sporting Goods Park,NO,Commerce City,CO,,KEC76,12.78,AENC2,2,YES,AENC2
+Los Angeles Galaxy,Dignity Health Sports Park,NO,Carson,CA,,KWL22,23.15,C2234,4,YES,C2234
+St. Louis City SC,Energizer Park,NO,St. Louis,MO,,KDO89,7.08,MBGM7,3,YES,MBGM7
+Nashville SC,GEODIS Park,NO,Nashville,TN,,KIG79,6.22,0679W,3,YES,0679W
+New England Revolution,Gillette Stadium,NO,Foxborough,MA,,KHB35,13.07,E1555,5,YES,E1555
+Orlando City SC,Inter&Co Stadium,NO,Orlando,FL,,KIH63,5.01,72205312841,3,YES,72205312841
+Columbus Crew,Lower.com Field,NO,Columbus,OH,,KIG86,8.12,0731W,2,YES,0731W
+Seattle Sounders,Lumen Field,NO,Seattle,WA,,KHB60,19.92,F0821,1,YES,F0821
+Atlanta United FC,Mercedes-Benz Stadium,YES,Atlanta,GA,,KEC80,21.36,0349W,1,YES,0349W
+San Jose Earthquakes,PayPal Park,NO,San Jose,CA,,KHB49,13.88,KSJC,1,YES,KSJC
+Portland Timbers,Providence Park,NO,Portland,OR,,WNG604,30.96,F8831,5,YES,F8831
+Austin FC,Q2 Stadium,NO,Austin,TX,,WXK27,7.9,E5093,4,YES,E5093
+CF Montreal,Saputo Stadium,NO,Montreal,QC,Canada,CWTA,4,CWTA,4,YES,CWTA
+Houston Dynamo,Shell Energy Stadium,NO,Houston,TX,,WZ2572,22.15,72059400188,3,YES,72059400188
+Chicago Fire,Soldier Field,NO,Chicago,IL,,KWO39,6.57,72534014819,9,YES,72534014819
+New York Red Bulls,Sports Illustrated Stadium,NO,Harrison,NJ,,KWO35,14.25,KEWR,3,YES,KEWR
+Philadelphia Union,Subaru Park,NO,Chester,PA,,KIH28,17.93,DE038,4,YES,DE038
+FC Dallas,Toyota Stadium,NO,Frisco,TX,,KEC56,26.38,D5204,3,YES,D5204
+FC Cincinnati,TQL Stadium,NO,Cincinnati,OH,,KIH42,11.64,KLUK,5,YES,KLUK
+New York City FC,Yankee Stadium,NO,Bronx,NY,,KWO35,9.69,KLGA,4,YES,KLGA
+San Diego FC,Snapdragon Stadium,NO,San Diego,CA,,WNG637,1.94,BVDC1,1,YES,BVDC1

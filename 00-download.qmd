@@ -1,0 +1,123 @@
+---
+title: "00-download"
+format: html
+---
+
+# Introduction
+
+In this file I will download the weather data using the visual studio Api, and import the schedule and stations to add more information to the weather data. I want to leave the weather station data for the different stadiums in a position where it can be easily cleaned to later do analysis on.
+
+```{r}
+# Importing libraries
+library(tidyverse)
+library(lubridate)
+```
+
+# Download
+
+## Libraries
+
+```{r}
+#Importing stadium info
+
+mls_stadium <- read.csv("MLS STADIUMS AND SCHEDULES - Stadiums.csv")
+
+head(mls_schedule)
+
+
+```
+
+## Changing the names of the stations to match their source.
+
+```{r}
+mls_stadium <- mls_stadium |> mutate(station = final_station_name)
+```
+
+## In the following chunk I will convert the date format in to R Date.
+
+```{r}
+# Making the date format fit in R  
+mls_schedule <- mls_schedule |> mutate(Date = mdy(Date))
+```
+
+## Importing the data frame with location and date information
+
+```{r}
+api_iterator <- read.csv("api_info.csv")
+```
+
+## Saving the API Key (if you have it)
+
+```{r}
+api_key <- ""
+```
+
+
+## Writing a function that allows me to iterate over this data frame
+
+```{r}
+query_data <- function(df){
+  results <- data.frame()
+  for (i in seq_len(nrow(df)))
+    {  location   <- df$location[i]
+    print(location)
+    start_date <- df$start_date[i]
+    print(start_date)
+    end_date   <- df$end_date[i]
+    print(end_date)
+    api_endpoint <- paste0(
+      "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/",
+      location, "/",
+      start_date, "/",
+      end_date,
+      "?key=", api_key,
+      "&unitGroup=metric",
+      "&contentType=csv",
+      "&include=hours")
+    response <- GET(api_endpoint)
+    weather_data <- read_csv(content(response, as = "text"))
+    results <- rbind2(weather_data,results)
+  }
+  return(results)
+  }
+
+```
+
+## Iterating for the different locations for 15 years.
+
+```{r}
+final_weather_data <- query_data(api_iterator)
+```
+
+## Saving only the necessary columns
+
+```{r}
+weather_data <-  final_weather_data |> select(!(windgust:severerisk))
+```
+
+## Changing the name of the name column to station
+
+```{r}
+weather_data_to_combine <- final_weather_data |> mutate(station = name) |> select(!name, !stations)
+```
+
+## Create an object with all of the weather station data with the stadium names.
+
+```{r}
+# Concatenates all of the clean data frames.
+more_weather_data_final <- weather_data_to_combine |> left_join(mls_stadium |> select(station, Team, Stadium), by = "station")
+```
+
+## Reviewing the Na sums in the combined object.
+
+```{r}
+#summarises all of the columns to find the NA sums
+more_weather_data_final |> 
+  summarise_all(~ sum(is.na(.)))
+```
+
+## Exporting the data
+
+```{r}
+write_csv(more_weather_data_final, file = "data-raw/final_data.csv")
+```
