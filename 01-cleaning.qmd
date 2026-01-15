@@ -13,6 +13,7 @@ In this file I will clean an hourly weather dataset with stations around MLS sta
 # Importing libraries
 library(tidyverse)
 library(ISOweek)
+library(glue)
 ```
 
 # Weekly Schedule across time
@@ -83,7 +84,7 @@ hourly_to_daily <- function(dataframe){
             precipitation = sum(precipitation),
             snow = sum(snow))
   
-  dataframe_clean_station <- dataframe_clean|> mutate(station = dataframe$STATION[1]) |> mutate(station = as.character(station))
+  dataframe_clean_station <- dataframe_clean|> mutate(station = dataframe$station[1])
   
   return(dataframe_clean_station)
 }
@@ -185,6 +186,8 @@ summer_winter_date_function <- function(years) {
   
   summer_winter_weeks_long_year <- summer_winter_weeks_base[1:25] 
   summer_winter_weeks_long_year[26:35] <-  summer_winter_weeks_base[26:35] - 53
+  
+  spring_fall_weeks <- 8:42
   
   for (i in seq_along(years)) {
     yr <- years[i]
@@ -323,7 +326,7 @@ years_df <- data.frame(dates_vector)
 
 ```{r}
 # Pulling out the important date information from the original schedule, finding which dates cannot be translated.
-test_schedule <-  schedule_data |> mutate( get_weekday_info(Date),new_schedule = get_nth_weekdays(year(new_schedule_6months),month(new_schedule_6months),weekday_name,weekday_number_in_month))
+test_schedule <-  schedule_data |> mutate(get_weekday_info(Date),new_schedule = get_nth_weekdays(year(new_schedule_6months),month(new_schedule_6months),weekday_name,weekday_number_in_month))
 
 ```
 
@@ -351,18 +354,25 @@ mls_schedule_new_dates <- new_column_schedules(test_schedule,years_df)
 new_column_schedules_cleaner <- function(df, years_df){
   for (i in seq_len(nrow(years_df))){
     year_in_row <- year(years_df[i,])
-  df <- df |>
+      new_schedule_name <- paste0("new_schedule_", year_in_row)
+      old_schedule_name <- paste0("old_schedule_", year_in_row)
+  return_frame <- df |>
     mutate(
   
   "new_schedule_fallback_{year_in_row}" := get_nth_weekdays(year(years_df[i,]), month(df$new_schedule_6months), df$weekday_name, pmax(df$weekday_number_in_month - 1, 1)) + 4, 
-  
-  "new_schedule_{year_in_row}_clean" := if_else(is.na(glue_data(df$"new_schedule_{year_in_row}")),glue_data(df$"new_fallback_date_{year_in_row}"),as.Date(glue_data(df$"new_schedule_{year_in_row}"))),
+   
+  "new_schedule_{year_in_row}_clean" := if_else(is.na(.data[[new_schedule_name]]),
+  .data[[paste0("new_schedule_fallback_", year_in_row)]],
+  .data[[new_schedule_name]]),
                                                ,
   "old_schedule_fallback_{year_in_row}" := get_nth_weekdays(year(years_df[i,]), month(df$new_schedule_6months), df$weekday_name, pmax(df$weekday_number_in_month - 1, 1)) + 4, 
   
-  "old_schedule_{year_in_row}_clean" := if_else(is.na(glue_data(df$"old_schedule_{year_in_row}")),glue_data(df$"old_fallback_date_{year_in_row}"),as.Date(glue_data(df$"old_schedule_{year_in_row}"))))
+  "old_schedule_{year_in_row}_clean" := if_else(is.na(.data[[old_schedule_name]]),
+  .data[[paste0("old_schedule_fallback_", year_in_row)]],
+  .data[[old_schedule_name]]))
+  
   }
-  return(df)
+  return(return_frame)
   }
 
 ```
@@ -403,10 +413,10 @@ spring_fall_2025_schedule <- new_mls_schedule_clean$Date
 
 ```{r}
 # 2025 Spring Schedule
-exact_2025_weather_spring_sched <- weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% spring_fall_2025_schedule)
+exact_2025_weather_spring_sched <- whole_weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% spring_fall_2025_schedule)
 
 # 2024-25 Summer Schedule
-exact_2025_weather_summer_sched <- weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% summer_spring_2025_schedule)
+exact_2025_weather_summer_sched <- whole_weather_data |> mutate(true_date = as.Date(datetime)) |>  filter(true_date %in% summer_spring_2025_schedule)
 ```
 
 # Exporting Data
