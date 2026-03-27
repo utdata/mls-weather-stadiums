@@ -1,0 +1,189 @@
+---
+title: "02-analysis"
+format: html
+---
+
+# Introduction
+
+ In the following notebook I will compare the weather at stadiums on match days.
+ 
+# Libraries
+
+```{r}
+# Installing packages
+library(tidyverse)
+library(lubridate)
+```
+
+
+# Loading data
+
+```{r}
+spring_schedule_2025 <- read_csv("data-processed/exact_2025_weather_spring_sched.csv")
+summer_schedule_2025 <- read_csv("data-processed/exact_2025_weather_summer_sched.csv")
+early_kickoff_schedule_spring <- read_csv("data-processed/weekly_schedule_early_spring.csv")
+early_kickoff_schedule_summer <- read_csv("data-processed/weekly_schedule_early_summer.csv")
+late_kickoff_schedule_spring <- read_csv("data-processed/weekly_schedule_late_spring.csv")
+late_kickoff_schedule_summer <- read_csv("data-processed/weekly_schedule_late_summer.csv")
+```
+
+
+# Count viz
+
+## Making a dataframe with the counts of matchdays ovre 30 degrees
+
+```{r}
+
+spring_over_thirty_count <- early_kickoff_schedule_spring |> 
+  mutate(week_year = isoweek(true_date)) |>
+  group_by(Team, week_year) |> 
+  summarise(avg_temp = mean(feelslike)) |> 
+  filter(avg_temp >= 32) |>
+  ungroup() |> 
+  group_by(Team) |> 
+  count() |> 
+  ungroup()
+
+summer_over_thirty_count <- early_kickoff_schedule_summer |> 
+  mutate(week_year = isoweek(true_date)) |>
+  group_by(Team, week_year) |> 
+  summarise(avg_temp = mean(feelslike)) |> 
+  filter(avg_temp >= 32) |>
+  ungroup() |> 
+  group_by(Team) |> 
+  count() |> 
+  ungroup()
+
+
+
+spring_under_freezing_count <- early_kickoff_schedule_spring |> 
+  mutate(week_year = isoweek(true_date)) |>
+  group_by(Team, week_year) |> 
+  summarise(avg_temp = mean(feelslike)) |> 
+  filter(avg_temp <= 0) |>
+  ungroup() |> 
+  group_by(Team) |> 
+  count() |> 
+  ungroup()
+
+
+
+summer_under_freezing_count <- early_kickoff_schedule_summer |> 
+  mutate(week_year = isoweek(true_date)) |>
+  group_by(Team, week_year) |> 
+  summarise(avg_temp = mean(feelslike)) |> 
+  filter(avg_temp <= 0) |>
+  ungroup() |> 
+  group_by(Team) |> 
+  count() |> 
+  ungroup()
+
+missing_teams <- summer_under_freezing_count |>
+  filter(!Team %in% spring_under_freezing_count$Team) |>
+  mutate(n = 0)
+
+spring_under_freezing_count <- bind_rows(spring_under_freezing_count, missing_teams)
+
+```
+
+
+## Making the Viz
+
+```{r}
+summer_over_thirty_count |> mutate(difference_n = spring_over_thirty_count$n-summer_over_thirty_count$n) |> 
+  ggplot(aes(x = difference_n, y = fct_reorder(Team, difference_n))) +
+  geom_col() +
+  scale_y_discrete(name = NULL) +
+  scale_x_continuous(name = NULL)
+
+summer_under_freezing_count |> mutate(difference_n = spring_under_freezing_count$n-summer_under_freezing_count$n) |> 
+  ggplot(aes(x = difference_n, y = fct_reorder(Team, difference_n))) +
+  geom_col() +
+  scale_y_discrete(name = NULL) +
+  scale_x_continuous(name = NULL, limits = c(-20,5), breaks = seq(-20,5,5))
+```
+
+
+
+
+# Comparing weather across schedule types
+
+```{r}
+# Early Kickoff
+early_kickoff_comparison <- early_kickoff_schedule_spring |> mutate(temp_difference = early_kickoff_schedule_spring$temp - early_kickoff_schedule_summer$temp, feels_like_difference = early_kickoff_schedule_spring$feelslike - early_kickoff_schedule_summer$feelslike, precip_difference = early_kickoff_schedule_spring$precip - early_kickoff_schedule_summer$precip, snow_difference = early_kickoff_schedule_spring$snow - early_kickoff_schedule_summer$snow)
+```
+
+```{r}
+# Late Kickoff
+late_kickoff_comparison <- late_kickoff_schedule_spring |> mutate(temp_difference = late_kickoff_schedule_spring$temp - late_kickoff_schedule_summer$temp, feels_like_difference = late_kickoff_schedule_spring$feelslike - late_kickoff_schedule_summer$feelslike, precip_difference = late_kickoff_schedule_spring$precip - late_kickoff_schedule_summer$precip, snow_difference = late_kickoff_schedule_spring$snow - late_kickoff_schedule_summer$snow)
+```
+
+
+# Viewing the new data frame
+
+```{r}
+early_kickoff_comparison |> sample_n(10)
+
+
+late_kickoff_comparison |> sample_n(10)
+```
+
+# Function to summarize hourly data to daily
+
+```{r}
+# Converts empty precipitation values to 0, removes an empty observation
+hourly_to_daily <- function(dataframe){
+  #Cleaning the date, creating a day column, and converting NA to 0.
+  no_na_dataframe <- dataframe |> mutate(date = as.Date(datetime), precipitation = if_else(is.na(dataframe$precip), 0, dataframe$precip),snow = if_else(is.na(dataframe$snow), 0, dataframe$snow), week = isoweek(date))
+  #Finding the high temp, low temp and precipitation for each day.
+  dataframe_clean <- no_na_dataframe |>  
+  group_by(Team, date) |> 
+  summarise(temp = mean(temp, na.rm = TRUE),
+            feelslike = mean(feelslike, na.rm = TRUE),
+            precipitation = sum(precip),
+            snow = sum(snow),
+            week = week) |> 
+  group_by(Team, week) |> 
+  summarise(temp = mean(temp, na.rm = TRUE),
+            feelslike = mean(feelslike, na.rm = TRUE),
+            precipitation = sum(precipitation),
+            snow = sum(snow))  
+
+  
+  return(dataframe_clean)
+}
+```
+
+```{r}
+summarized_spring_sched_2025 <- hourly_to_daily(spring_schedule_2025)
+summarized_summer_sched_2025 <- hourly_to_daily(summer_schedule_2025)
+```
+
+
+
+# Summarizing Data frames
+
+```{r}
+early_kickoff_comp_summary <- hourly_to_daily(early_kickoff_comparison) |> mutate(matchweek = isoweek(date) - 7)
+
+late_kickoff_comp_summary <- hourly_to_daily(late_kickoff_comparison) |> mutate(matchweek = isoweek(date) - 7)
+```
+
+# Analyzing dataframes
+
+```{r}
+early_kickoff_comp_summary |> head()
+
+late_kickoff_comp_summary |> head()
+```
+
+```{r}
+early_kickoff_comp_summary |> 
+  group_by(Team,matchweek) |> 
+  summarise(avg_temp_diff = mean(temp_diff),
+            avg_feels_like_diff = mean(feels_like_diff)) |> 
+  filter(matchweek == 1) |> arrange(desc(avg_feels_like_diff))
+
+```
+
+# Comparing change in hot days 

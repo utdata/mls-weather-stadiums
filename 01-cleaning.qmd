@@ -141,6 +141,7 @@ years <- seq(2010,2024)
 ```{r}
 spring_fall_date_function <- function(years) {
   
+  
   empty_date <- as.Date(character())
   spring_fall_weeks <- 8:42
   
@@ -181,37 +182,91 @@ summer_winter_date_function <- function(years) {
   empty_date <- as.Date(character())
   summer_winter_weeks_base <- 29:63
   
-  summer_winter_weeks_short_year <- summer_winter_weeks_base[1:24] 
+  summer_winter_weeks_short_year <- summer_winter_weeks_base 
   summer_winter_weeks_short_year[25:35] <-  summer_winter_weeks_base[25:35] - 52
   
-  summer_winter_weeks_long_year <- summer_winter_weeks_base[1:25] 
+  summer_winter_weeks_long_year <- summer_winter_weeks_base 
   summer_winter_weeks_long_year[26:35] <-  summer_winter_weeks_base[26:35] - 53
   
-  spring_fall_weeks <- 8:42
   
   for (i in seq_along(years)) {
     yr <- years[i]
     
-    if (get_iso_weeks(yr) == 52){
-       
-      for (j in seq_along(summer_winter_weeks_short_year)){
-        wk <- spring_fall_weeks[j]
-        
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
-      }
-      }
+    if (yr == 2010){
+      
+      if (get_iso_weeks(yr) == 52){
+         
+        for (j in seq(1,24)){
+          wk <- summer_winter_weeks_short_year[j]
+          
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+        }
+        }
+      
+      if (get_iso_weeks(yr)==53){
+         
+        for (j in seq(1,25)){
+          wk <- summer_winter_weeks_long_year[j]
+          
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+        }
+        }
+      
+    }
     
-    if (get_iso_weeks(yr)==53){
-       
-      for (j in seq_along(summer_winter_weeks_long_year)){
-        wk <- spring_fall_weeks[j]
+    if (yr == 2024){
+      
+      if (get_iso_weeks(yr) == 52){
+         
+        for (j in seq(25,35)){
+          wk <- summer_winter_weeks_short_year[j]
+          
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+        }
+        }
+      
+      if (get_iso_weeks(yr)==53){
+         
+        for (j in seq(26,35)){
+          wk <- summer_winter_weeks_long_year[j]
+          
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+          empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+        }
+        }
+      
+    }
+    
+    
+    if (yr<2024 & yr>2010) {
+        if (get_iso_weeks(yr) == 52){
+           
+          for (j in seq(1,35)){
+            wk <- summer_winter_weeks_short_year[j]
+            
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+          }
+          }
         
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
-        empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
-      }
+        if (get_iso_weeks(yr)==53){
+           
+          for (j in seq(1,35)){
+            wk <- summer_winter_weeks_long_year[j]
+            
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Saturday"))
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Sunday"))
+            empty_date <- c(empty_date, get_weekdays_in_week(yr, wk, "Wednesday"))
+          }
+          }
       }
   }
   
@@ -222,7 +277,8 @@ summer_winter_date_function <- function(years) {
 ## Finding and saving the Spring-Fall dates
 
 ```{r}
-spring_fall_dates <-  spring_fall_date_function(years)
+years2 <- years[1:14]
+spring_fall_dates <-  spring_fall_date_function(years2)
 ```
 
 ## Finding and saving the Summer-Winter dates
@@ -230,6 +286,7 @@ spring_fall_dates <-  spring_fall_date_function(years)
 ```{r}
 summer_winter_dates <-  summer_winter_date_function(years)
 ```
+
 
 ## Filtering and saving the weather data to our necessary dates
 
